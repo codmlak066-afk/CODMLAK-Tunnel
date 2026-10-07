@@ -322,10 +322,44 @@ health(){
 }
 
 update(){
-
     echo
-    yellow "Update is not enabled yet."
-    yellow "GitHub release/update system will be added after the final core release."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "              🔄 UPDATE"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo
+
+    local url="https://raw.githubusercontent.com/codmlak066-afk/CODMLAK-Tunnel/main/SpeefTunnel.sh"
+    local tmp="/tmp/speef-tunnel-update.$$"
+    local backup_file="$BACKUP/manager-$(date +%Y%m%d_%H%M%S).sh"
+
+    yellow "Checking GitHub..."
+
+    if ! curl -fsSL --connect-timeout 10 --max-time 30 "$url" -o "$tmp"; then
+        red "❌ Failed to download update."
+        rm -f "$tmp"
+        return
+    fi
+
+    if [[ ! -s "$tmp" ]] || ! head -n 1 "$tmp" | grep -q '^#!/usr/bin/env bash$'; then
+        red "❌ Invalid update file."
+        rm -f "$tmp"
+        return
+    fi
+
+    chmod +x "$tmp"
+
+    mkdir -p "$BACKUP"
+    cp "$0" "$backup_file"
+
+    cp "$tmp" "$0"
+    chmod +x "$0"
+    rm -f "$tmp"
+
+    green "✅ Manager updated successfully."
+    echo "Backup: $backup_file"
+    echo
+    yellow "Restarting Manager..."
+    exec "$0"
 }
 
 menu(){
