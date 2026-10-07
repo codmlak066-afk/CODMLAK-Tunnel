@@ -416,9 +416,8 @@ menu(){
 }
 
 if [[ ! -x "$CORE" ]]; then
-    red "❌ Speef Core not found:"
-    echo "$CORE"
-    exit 1
+    yellow "⚠️ Speef Core not installed."
+    yellow "Use option 12 to install / repair Speef."
 fi
 
 menu
