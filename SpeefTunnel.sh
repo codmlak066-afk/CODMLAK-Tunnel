@@ -32,6 +32,87 @@ pause(){
 }
 
 role="$(cat /etc/speef/role 2>/dev/null || true)"
+install_speef(){
+    echo
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "          🚀 SPEEF INSTALLER"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo
+
+    [[ "$EUID" -eq 0 ]] || {
+        red "❌ Installer must run as root."
+        return
+    }
+
+    mkdir -p "$BASE" "$BACKUP" "$(dirname "$CORE")"
+
+    local raw_base="https://raw.githubusercontent.com/codmlak066-afk/CODMLAK-Tunnel/main"
+    local tmp_core="/tmp/speef-core.$$"
+
+    yellow "Downloading Speef Core..."
+
+    if ! curl -fsSL --connect-timeout 10 --max-time 60 \
+        "$raw_base/core/bin/speef-core" -o "$tmp_core"; then
+        red "❌ Failed to download Speef Core."
+        rm -f "$tmp_core"
+        return
+    fi
+
+    if [[ ! -s "$tmp_core" ]]; then
+        red "❌ Downloaded Core is empty."
+        rm -f "$tmp_core"
+        return
+    fi
+
+    install -m 0755 "$tmp_core" "$CORE"
+    rm -f "$tmp_core"
+
+    yellow "Installing systemd service..."
+
+    cat > /etc/systemd/system/speef-core@.service <<'EOF'
+[Unit]
+Description=Speef Tunnel Core - %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/root/speef-tunnel-v1/core/bin/speef-core --config /etc/speef/tunnels/%i.json
+Restart=always
+RestartSec=2
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+
+    if [[ ! -f /etc/speef/role ]]; then
+        echo
+        echo "Select server role:"
+        echo "1) 🇮🇷 IRAN"
+        echo "2) 🌍 KHAREJ"
+        read -r -p "Select [1-2]: " role_choice
+
+        case "$role_choice" in
+            1) echo "iran" > /etc/speef/role ;;
+            2) echo "kharej" > /etc/speef/role ;;
+            *)
+                red "❌ Invalid role."
+                return
+                ;;
+        esac
+    fi
+
+    role="$(cat /etc/speef/role 2>/dev/null || true)"
+
+    green "✅ Speef Core installed."
+    green "✅ Systemd service installed."
+    green "✅ Role: $role"
+    green "✅ Installer completed successfully."
+}
+
 
 if [[ "$role" != "iran" && "$role" != "kharej" ]]; then
     echo
@@ -390,6 +471,7 @@ menu(){
         echo "  9) 💾 Backup"
         echo " 10) ❤️ Health"
         echo " 11) 🔄 Update"
+        echo " 12) 🚀 Install / Repair"
         echo "  0) Exit"
         echo
 
@@ -407,6 +489,7 @@ menu(){
             9) backup ;;
             10) health ;;
             11) update ;;
+            12) install_speef ;;
             0) exit 0 ;;
             *) red "Invalid option." ;;
         esac
